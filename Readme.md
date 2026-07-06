@@ -545,3 +545,14 @@ Answer:
 | 96,470 | 0.27 | 2.75 | 9.09 |
 
 The bulk of the fulfillment time is spent in the last-mile delivery phase (Carrier to Customer), averaging 9 days.
+
+
+## Key Findings
+
+Analysis of ~96K delivered orders (R$13.2M merchandise revenue, Sep 2016 – Oct 2018):
+
+1. **Growth was steep but flattening.** Revenue scaled from near zero to ~R$6M/year
+   in 2017, with 2018 pacing ahead of 2017 but at a visibly slower growth rate —
+   suggesting the marketplace was maturing out of its launch phase.
+<img width="1804" height="1706" alt="image" src="https://github.com/user-attachments/assets/1e6bcaeb-15b5-4c4c-bf86-1c5b4d0c76c9" />
+
