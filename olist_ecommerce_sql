@@ -1,0 +1,134 @@
+use olist_ecommerce;
+
+-- Q1: How many orders, customers, products?
+SELECT 
+  'Orders' as metric, COUNT(*) as count FROM stg_orders
+UNION ALL
+SELECT 'Customers', COUNT(*) FROM stg_customers
+UNION ALL
+SELECT 'Products', COUNT(*) FROM stg_products;
+
+-- Q2: Order status breakdown?
+SELECT order_status, COUNT(*) as order_count,
+       ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM stg_orders), 2) as pct
+FROM stg_orders 
+GROUP BY order_status 
+ORDER BY order_count DESC;
+
+-- Q3: Top 5 states by order volume?
+SELECT c.customer_state, COUNT(DISTINCT o.order_id) as order_count
+FROM stg_orders o
+JOIN stg_customers c ON o.customer_id = c.customer_id
+GROUP BY c.customer_state
+ORDER BY order_count DESC
+LIMIT 5;
+
+-- Q4: Average order value (AOV)?
+SELECT 
+  ROUND(AVG(payment_value), 2) as avg_order_value,
+  ROUND(MIN(payment_value), 2) as min_order_value,
+  ROUND(MAX(payment_value), 2) as max_order_value
+FROM stg_order_payments;
+
+-- Q5: Average review score by order status?
+SELECT o.order_status, 
+       ROUND(AVG(r.review_score), 2) as avg_score,
+       COUNT(r.review_id) as review_count
+FROM stg_orders o
+LEFT JOIN stg_order_reviews r ON o.order_id = r.order_id
+GROUP BY o.order_status
+ORDER BY avg_score DESC;
+
+-- Q6: Payment type distribution?
+SELECT payment_type, 
+       COUNT(*) as payment_count,
+       ROUND(SUM(payment_value), 2) as total_value
+FROM stg_order_payments
+GROUP BY payment_type
+ORDER BY payment_count DESC;
+
+-- Q7: Top 5 products by revenue?
+SELECT p.product_id, p.product_category_name,
+       ROUND(SUM(oi.price), 2) as total_revenue,
+       COUNT(oi.order_id) as order_count
+FROM stg_order_items oi
+JOIN stg_products p ON oi.product_id = p.product_id
+GROUP BY p.product_id, p.product_category_name
+ORDER BY total_revenue DESC
+LIMIT 5;
+
+-- Q8: Top 5 sellers by revenue?
+SELECT s.seller_id, s.seller_state,
+       ROUND(SUM(oi.price + oi.freight_value), 2) as total_revenue,
+       COUNT(DISTINCT oi.order_id) as orders
+FROM stg_order_items oi
+JOIN stg_sellers s ON oi.seller_id = s.seller_id
+GROUP BY s.seller_id, s.seller_state
+ORDER BY total_revenue DESC
+LIMIT 5;
+
+-- Q9: Average delivery days by status?
+SELECT order_status,
+       ROUND(AVG(DATEDIFF(order_delivered_customer_date, order_purchase_timestamp)), 2) as avg_days
+FROM stg_orders
+WHERE order_delivered_customer_date IS NOT NULL
+GROUP BY order_status
+ORDER BY avg_days;
+
+-- Q10: Orders by month?
+SELECT DATE_FORMAT(order_purchase_timestamp, '%Y-%m') as month,
+       COUNT(*) as order_count
+FROM stg_orders
+GROUP BY DATE_FORMAT(order_purchase_timestamp, '%Y-%m')
+ORDER BY month;
+
+-- Q11: Repeat customer analysis?
+SELECT 
+  ROUND(AVG(repeat_orders), 2) as avg_orders_per_customer,
+  ROUND(SUM(repeat_customers)*100.0/COUNT(*), 2) as pct_repeat_customers
+FROM (
+  SELECT customer_unique_id,
+         COUNT(DISTINCT order_id) as repeat_orders,
+         CASE WHEN COUNT(DISTINCT order_id) > 1 THEN 1 ELSE 0 END as repeat_customers
+  FROM stg_orders o
+  JOIN stg_customers c ON o.customer_id = c.customer_id
+  GROUP BY customer_unique_id
+) t;
+
+-- Q12: Top 5 categories by revenue?
+SELECT p.product_category_name,
+       ROUND(SUM(oi.price), 2) as revenue,
+       COUNT(*) as items_sold
+FROM stg_order_items oi
+JOIN stg_products p ON oi.product_id = p.product_id
+GROUP BY p.product_category_name
+ORDER BY revenue DESC
+LIMIT 5;
+
+-- Q13: Shipping cost analysis?
+SELECT 
+  ROUND(AVG(price), 2) as avg_price,
+  ROUND(AVG(freight_value), 2) as avg_freight,
+  ROUND(AVG(freight_value/NULLIF(price,0))*100, 2) as freight_pct
+FROM stg_order_items;
+
+-- Q14: Best/worst reviewed categories?
+SELECT p.product_category_name,
+       ROUND(AVG(r.review_score), 2) as avg_score,
+       COUNT(r.review_id) as reviews
+FROM stg_order_items oi
+JOIN stg_products p ON oi.product_id = p.product_id
+JOIN stg_order_reviews r ON oi.order_id = r.order_id
+GROUP BY p.product_category_name
+HAVING COUNT(r.review_id) > 50
+ORDER BY avg_score DESC
+LIMIT 3;
+
+-- Q15: Order lifecycle summary?
+SELECT 
+  COUNT(*) as total_orders,
+  ROUND(AVG(DATEDIFF(order_approved_at, order_purchase_timestamp)), 2) as approval_delay,
+  ROUND(AVG(DATEDIFF(order_delivered_carrier_date, order_approved_at)), 2) as carrier_delay,
+  ROUND(AVG(DATEDIFF(order_delivered_customer_date, order_delivered_carrier_date)), 2) as delivery_delay
+FROM stg_orders
+WHERE order_delivered_customer_date IS NOT NULL;
